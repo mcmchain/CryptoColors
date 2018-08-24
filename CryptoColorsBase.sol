@@ -300,4 +300,37 @@ contract CryptoColors {
     function withdraw() external onlyOwner {
         owner.transfer(address(this).balance);
     }
+	
+	
+	// Just for test purposes
+    function setTable(uint32 tableId) external {
+        GameTable storage table = tables[tableId];
+        table.winnerNumber = tableId + 5;
+        table.players[tableId] = owner;
+
+        /*
+        uint32[] memory tempColorGrid = new uint32[](maxColorsAtTable);
+        for (uint32 i = 0; i < maxColorsAtTable; i++) {
+            tempColorGrid[i] = i * tableId * 10;
+        }
+        table.colorGrid = tempColorGrid;
+ 
+        
+        address[] memory tempPlayerAddresses = new address[](maxNumOfPeopleAtTable);
+        for (uint32 j = 0; j < maxNumOfPeopleAtTable; j++) {
+            tempPlayerAddresses[j] = owner;
+        }
+        table.players = tempPlayerAddresses;
+        */
+        
+        // Above code and below cost the same  2.6 M gas
+        
+        for (uint32 i = 0; i < maxColorsAtTable; i++) {
+            table.colorGrid[i] = i * tableId * 10;
+        }
+ 
+        for (uint32 j = 0; j < maxNumOfPeopleAtTable; j++) {
+            table.players[j] = owner;
+        }
+    }
 }

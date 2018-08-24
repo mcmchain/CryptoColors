@@ -35,13 +35,12 @@ contract CryptoColors {
         minBetMultiplier = 1;                   // minBetVal = 1  * betConstantFinney = 30  finney = 0.03 eth
         maxBetMultiplier = 33;                  // maxBetVal = 33 * betConstantFinney = 990 finney = 0.99 eth  
         
-        maxTableNumber = 3;
+        maxTableNumber = 3;                     // Initialization of 3 tables cost 7.5 M Gas  (Max allowed 8M Gas)
         maxWaitingTimeForPlayers = 3 minutes;   // wait for players max 3 min
     }
     
     
-    
-    function initGamePlay() public {
+    function initGamePlay() external {
         // tableId = 0 is reserved.
         for (uint32 i = 1; i <= maxTableNumber; i++) {
             address[] memory tempPlayerAddresses = new address[](maxNumOfPeopleAtTable);
@@ -53,25 +52,7 @@ contract CryptoColors {
     
     
     function getTableInfo(uint32 tableId) external view returns(uint32, uint32, uint32, uint32, uint32[], address[]) {
-        GameTable storage table = tables[0];
-        for (uint32 i = 0; i < tables.length; i++) {
-            if (tables[i].tableId == tableId) {
-                table = tables[i];
-            }
-        }
-        
-        address[] memory playerAddresses = new address[](maxNumOfPeopleAtTable);
-        for (uint32 j = 0; j < table.playerCount; j++) {
-            playerAddresses[j] = table.players[j];
-        }
-        
-        uint32[] memory colorsInGrid = new uint32[](maxColorsAtTable);
-        for (uint32 k = 0; k < table.totalColorNumber; k++) {
-            colorsInGrid[k] = table.colorGrid[k];
-        }
-        
-        address[] memory tempPlayerAddresses = new address[](maxNumOfPeopleAtTable);
-        uint32[] memory tempColorGrid = new uint32[](maxColorsAtTable);
-        return (table.playerCount, table.firstPlayerArrivedTime, table.totalColorNumber, table.winnerNumber, tempColorGrid, tempPlayerAddresses);
+        GameTable storage table = tables[tableId];
+        return (table.playerCount, table.firstPlayerArrivedTime, table.totalColorNumber, table.winnerNumber, table.colorGrid, table.players);
     }
 }
