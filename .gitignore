@@ -10,4 +10,4 @@ release.properties
 target/
 angular_dist/
 node_modules/
-private/
+PrivateFiles/
