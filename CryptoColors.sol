@@ -30,7 +30,7 @@ contract CryptoColors {
         address[] players;
     }
     
-     struct Player {
+    struct Player {
         address playerAddress;
         string name;
         uint32 colorId;
@@ -40,8 +40,8 @@ contract CryptoColors {
     }
     
     modifier onlyOwner {
-         require (msg.sender == owner);
-         _;
+        require (msg.sender == owner);
+        _;
     }
     
     modifier gameInitialized {
