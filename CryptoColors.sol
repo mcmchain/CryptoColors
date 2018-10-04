@@ -1,5 +1,11 @@
 pragma solidity ^0.4.25;
 
+//TODOs
+// -- Visibility (Public to Private etc)
+// -- Table creation, automatic calculation of ID
+// -- emit vs return value. If blockchain is not changed, return val is blockchain
+
+
 contract CryptoColors {
     
     uint32 public minBetMultiplier;
@@ -18,6 +24,7 @@ contract CryptoColors {
     
     
     GameTable[] public tables; 
+    mapping (int => GameTable) public tableIdToTable;
     mapping (address => Player) public addressToPlayer;
 
     struct GameTable {
@@ -49,15 +56,8 @@ contract CryptoColors {
         _;
     }
     
-    modifier tableNotExists(uint32 tableId) {
-        bool found = false;
-        for (uint32 i = 0; i < tables.length; i++) {
-            if (tables[i].tableId == tableId) {
-                found = true;
-                break;
-            }
-        }
-        require(found == false);
+    modifier tableExists(uint32 tableId) {
+        require(tableIdToTable[tableId].tableId != 0);
         _;
     }
     
@@ -103,7 +103,7 @@ contract CryptoColors {
     
     
     // Init all the tables. This should be called after the contract is constructed
-    // Costs 6M Gas (for 3 table)
+    // Costs 6.6M Gas (for 3 table)
     function initGamePlay() external onlyOwner {
         
         require(gameAlreadyInitialized == false);
@@ -112,8 +112,15 @@ contract CryptoColors {
         for (uint32 i = 1; i <= maxTableNumber; i++) {
             address[] memory tempPlayerAddresses = new address[](maxNumOfPeopleAtTable);
             uint32[] memory tempColorGrid = new uint32[](maxColorsAtTable);
-            GameTable memory tempTable = GameTable(i, 0, 0, 0, 0, tempColorGrid, tempPlayerAddresses); 
-            tables.push(tempTable);
+            //GameTable memory tempTable = GameTable(i, 0, 0, 0, 0, tempColorGrid, tempPlayerAddresses); 
+            //tables.push(tempTable);
+            
+            // if table is not initialized
+            if (tableIdToTable[i].tableId == 0) {
+                tableIdToTable[i] = GameTable(i, 0, 0, 0, 0, tempColorGrid, tempPlayerAddresses);
+                tables.push(tableIdToTable[i]);
+            }
+            
         }
         
         gameAlreadyInitialized = true;
@@ -139,36 +146,57 @@ contract CryptoColors {
     
     
     // Admin can increase the number of tables 
-    // Adding a table costs 2M Gas
-    function addNewTable(uint32 tableId) external onlyOwner gameInitialized tableNotExists(tableId) {
+    // Adding a table costs 2.2M Gas
+    function addNewTable(uint32 tableId) external onlyOwner gameInitialized {
         address[] memory tempPlayerAddresses = new address[](maxNumOfPeopleAtTable);
         uint32[] memory tempColorGrid = new uint32[](maxColorsAtTable);
-        GameTable memory tempTable = GameTable(tableId, 0, 0, 0, 0, tempColorGrid, tempPlayerAddresses); 
-        tables.push(tempTable);
+        
+        //GameTable memory tempTable = GameTable(tableId, 0, 0, 0, 0, tempColorGrid, tempPlayerAddresses); 
+        //tables.push(tempTable);
+        
+        // if table is not initialized
+        if (tableIdToTable[tableId].tableId == 0) {
+            tableIdToTable[tableId] = GameTable(tableId, 0, 0, 0, 0, tempColorGrid, tempPlayerAddresses); 
+            tables.push(tableIdToTable[tableId]);
+        }
         
         emit TableHasAdded(owner, tableId);
     }
     
     
     function getNextTableId() external view onlyOwner returns(uint256) {
-        return tables.length + 1;
+        return tables[tables.length-1].tableId + 1;
+    }
+    
+    
+    // After the game is finished at the given table, clear table. 
+    function renewTable(uint32 tableId) public gameInitialized tableExists(tableId) {
+        GameTable storage table = tableIdToTable[tableId];
+        
+        table.playerCount = 0;
+        table.firstPlayerArrivedTime = 0;
+        table.winnerNumber = 0;
+        table.totalColorNumber = 0;
+        
+        for (uint32 j = 0; j < maxColorsAtTable; j++) {
+            table.colorGrid[j] = 0;           
+        }
+    }
+    
+    
+    function findEmptyTable() public view gameInitialized returns(uint32) {
+        for (uint i = 0; i < tables.length; i++) {
+            if (tables[i].playerCount < maxNumOfPeopleAtTable) {
+                return tables[i].tableId;
+            }
+        }
+        return 0;
     }
     
     
     // Return all the info for a given table
-    function getTableInfo(uint32 tableId) external view gameInitialized returns(uint32, uint32, uint32, uint32, uint32, uint32[], address[]) {
-        GameTable storage table = tables[0];
-        bool found = false;
-        
-        for (uint32 i = 0; i < tables.length; i++) {
-            if (tables[i].tableId == tableId) {
-                found = true;
-                table = tables[i];
-                break;
-            }
-        }
-        
-        require(found == true);
+    function getTableInfo(uint32 tableId) external view gameInitialized tableExists(tableId) returns(uint32, uint32, uint32, uint32, uint32, uint32[], address[]) {
+        GameTable storage table = tableIdToTable[tableId];
         return (table.tableId, table.playerCount, table.firstPlayerArrivedTime, table.totalColorNumber, table.winnerNumber, table.colorGrid, table.players);
     }
     
@@ -182,21 +210,31 @@ contract CryptoColors {
         owner.transfer(address(this).balance);
     }
     
-    
-    // Just for test purposes. Set dummy values to the tables.
-    function setDummyValuesToTable(uint32 tableId) external gameInitialized {
+        
+    /* 
+    //Not supported yet
+    // Return table pointer
+    function getTable(uint32 tableId) external view gameInitialized returns(bool, GameTable) {
         GameTable storage table = tables[0];
         bool found = false;
         
-        for (uint32 t = 0; t < tables.length; t++) {
-            if (tables[t].tableId == tableId) {
+        for (uint32 i = 0; i < tables.length; i++) {
+            if (tables[i].tableId == tableId) {
                 found = true;
-                table = tables[t];
+                table = tables[i];
                 break;
             }
         }
         
-        require(found == true);
+        return (found, table);
+    }
+    */
+    
+    
+    // Just for test purposes. Set dummy values to the tables.
+    // Setting all variables costs 2.6M Gas
+    function setDummyValuesToTable(uint32 tableId) external gameInitialized tableExists(tableId) {
+        GameTable storage table = tableIdToTable[tableId];
         
         table.winnerNumber = tableId + maxNumOfPeopleAtTable;
         table.players[tableId % maxNumOfPeopleAtTable] = owner;
