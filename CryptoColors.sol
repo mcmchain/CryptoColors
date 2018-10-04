@@ -170,7 +170,7 @@ contract CryptoColors {
     
     
     // After the game is finished at the given table, clear table. 
-    function renewTable(uint32 tableId) public gameInitialized tableExists(tableId) {
+    function renewTable(uint32 tableId) internal gameInitialized tableExists(tableId) {
         GameTable storage table = tableIdToTable[tableId];
         
         table.playerCount = 0;
@@ -183,8 +183,140 @@ contract CryptoColors {
         }
     }
     
+    // 90K Gas
+    function registerPlayer(address playerAddress, string name, uint32 betMultiplier) internal {
+        if (addressToPlayer[playerAddress].playerAddress == 0) {
+            addressToPlayer[playerAddress] = Player(playerAddress, name, 0, 0, betMultiplier, 0);
+        } 
+        else {
+            // Player is already on the chain, update it
+            addressToPlayer[playerAddress].betMultiplier = betMultiplier;
+            addressToPlayer[playerAddress].name = name;
+        }
+        
+        emit PlayerJoinedForAll(playerAddress); 
+        emit PlayerJoined(playerAddress);
+    }
     
-    function findEmptyTable() public view gameInitialized returns(uint32) {
+    // 150K Gas
+    function requestJoinTable(string name, uint32 betMultiplier) external gameInitialized {
+        registerPlayer(msg.sender, name, betMultiplier);
+        
+        uint32 foundTableId = findEmptyTable();
+        
+        if(foundTableId == 0) {
+            // no empty table :(
+            // Can return a value as well, instead of event. It does not change the state of block chain
+            emit NoTableFound(msg.sender); 
+        }
+        else {
+            // Table found.
+            sitToTable(foundTableId, msg.sender);
+            emit PlayerInTableForAll(msg.sender, foundTableId); 
+            emit PlayerInTable(msg.sender, foundTableId);
+        }
+    }
+    
+    function sitToTable(uint32 tableId, address playerAddress) internal gameInitialized tableExists(tableId) playerExists(playerAddress) {
+        GameTable storage table = tableIdToTable[tableId];
+        require(table.playerCount < maxNumOfPeopleAtTable);
+        
+        // First player arrived
+        if(table.playerCount == 0) {
+            table.firstPlayerArrivedTime = uint32(now);
+        }
+        
+        table.players[table.playerCount] = playerAddress;
+        table.playerCount++;
+        addressToPlayer[playerAddress].tableId = tableId;
+        
+        if(table.playerCount == maxNumOfPeopleAtTable) {
+            // start game
+            startGameAtTable(tableId);
+            return;
+        }      
+    }
+    
+    
+    function startGameAtTable(uint32 tableId) internal gameInitialized tableExists(tableId) {
+        emit GameIsStartedAtTable(tableId);
+        
+        // set the game grid
+        calculateNumberOfColorsForPlayersAtTable(tableId);
+        
+        // randomly pick the number for the winner index
+        //uint32 random = uint32(uint(keccak256(abi.encodePacked(now, tables[tableId].players[0], tables[tableId].totalColorNumber))) % tables[tableId].totalColorNumber);
+        uint32 random = tableId;
+        tableIdToTable[tableId].winnerNumber = random;
+        
+        emit GameIsEndedAtTable(tableId);
+        //renewTable(tableId);
+    }
+    
+    
+    function calculateNumberOfColorsForPlayersAtTable(uint32 tableId) public gameInitialized tableExists(tableId) {
+        GameTable storage table = tableIdToTable[tableId];
+        
+        uint32 totalBetMultiplier = 0;
+        for (uint32 i = 0; i < table.playerCount; i++) {
+            address playerAddrI = table.players[i];
+            totalBetMultiplier += addressToPlayer[playerAddrI].betMultiplier;
+        }
+        
+        uint32 colorMultiplier = maxColorsAtTable / totalBetMultiplier;
+        uint32 totalColors = colorMultiplier * totalBetMultiplier;
+        table.totalColorNumber = totalColors;
+        
+        setColors(tableId, colorMultiplier, totalColors);
+    }
+    
+    
+    function setColors(uint32 tableId, uint32 colorMultiplier, uint32 totalColors) internal gameInitialized tableExists(tableId) {
+        GameTable storage table = tableIdToTable[tableId];
+    
+        uint32[] memory playerRemainingColors = new uint32[](maxNumOfPeopleAtTable);
+        
+        for (uint32 j = 0; j < table.playerCount; j++) {
+            address playerAddrJ = table.players[j];
+            addressToPlayer[playerAddrJ].numberOfColors = colorMultiplier * addressToPlayer[playerAddrJ].betMultiplier;
+            addressToPlayer[playerAddrJ].colorId = j + 1;
+            playerRemainingColors[j] = addressToPlayer[playerAddrJ].numberOfColors;
+        }
+        
+        uint32[] memory playersForRandomArray = new uint32[](maxNumOfPeopleAtTable);
+        
+        // Set colors randomly in grid
+        for (uint32 k = 0; k < totalColors; k++) {
+            uint32 p = 0;
+            for (uint32 n = 0; n < table.playerCount; n++) {
+                if (playerRemainingColors[n] > 0) {
+                    playersForRandomArray[p] = n; 
+                    p++;
+                }                
+            }
+            
+            if (playersForRandomArray.length <= 1) {
+                for (uint32 m = k; m < totalColors; m++) {
+                    table.colorGrid[k] = addressToPlayer[table.players[playersForRandomArray[0]]].colorId;
+                    playersForRandomArray[playersForRandomArray[0]] --;
+                }
+                
+                break;
+            } 
+            
+            else {
+                //uint32 random = uint32(uint(keccak256(abi.encodePacked(now, table.players[playersForRandomArray[0]], k))) % playersForRandomArray.length);
+                uint32 random = k;
+                //table.colorGrid[k] = addressToPlayer[table.players[playersForRandomArray[random]]].colorId;
+                table.colorGrid[k] = k;
+                playersForRandomArray[playersForRandomArray[random]] --;
+            }
+        }
+        
+    }
+    
+    
+    function findEmptyTable() internal view gameInitialized returns(uint32) {
         for (uint i = 0; i < tables.length; i++) {
             if (tables[i].playerCount < maxNumOfPeopleAtTable) {
                 return tables[i].tableId;
@@ -195,9 +327,12 @@ contract CryptoColors {
     
     
     // Return all the info for a given table
-    function getTableInfo(uint32 tableId) external view gameInitialized tableExists(tableId) returns(uint32, uint32, uint32, uint32, uint32, uint32[], address[]) {
+    function getTableInfo(uint32 tableId) external view gameInitialized tableExists(tableId) 
+                                            returns(uint32, uint32, uint32, uint32, uint32, uint32[], address[]) {
+                            
         GameTable storage table = tableIdToTable[tableId];
-        return (table.tableId, table.playerCount, table.firstPlayerArrivedTime, table.totalColorNumber, table.winnerNumber, table.colorGrid, table.players);
+        return (table.tableId, table.playerCount, table.firstPlayerArrivedTime, table.totalColorNumber, 
+                    table.winnerNumber, table.colorGrid, table.players);
     }
     
     
