@@ -4,6 +4,7 @@ pragma solidity ^0.4.25;
 // -- Visibility (Public to Private etc)
 // -- Table creation, automatic calculation of ID
 // -- emit vs return value. If blockchain is not changed, return val is blockchain
+// -- Same person, joining tables
 
 
 contract CryptoColors {
@@ -15,7 +16,8 @@ contract CryptoColors {
     uint32 public maxWaitingTimeForPlayers;
     uint256 public betConstantFinney;
     
-    uint32 constant public maxColorsAtTable = 330;
+    // 110 Colors cost 2.6M Gas, 220 Colors cost 4.8M Gas. No OracleRandomizer, simple randomizer
+    uint32 constant public maxColorsAtTable = 220;   
     uint32 constant public maxNumOfPeopleAtTable = 3;
     
     address public owner;
@@ -26,7 +28,8 @@ contract CryptoColors {
     GameTable[] public tables; 
     mapping (int => GameTable) public tableIdToTable;
     mapping (address => Player) public addressToPlayer;
-
+    mapping (address => uint32) addressToRemainingColor;
+        
     struct GameTable {
         uint32 tableId;
         uint32 playerCount;
@@ -245,8 +248,8 @@ contract CryptoColors {
         calculateNumberOfColorsForPlayersAtTable(tableId);
         
         // randomly pick the number for the winner index
-        //uint32 random = uint32(uint(keccak256(abi.encodePacked(now, tables[tableId].players[0], tables[tableId].totalColorNumber))) % tables[tableId].totalColorNumber);
-        uint32 random = tableId;
+        uint32 random = uint32(uint(keccak256(abi.encodePacked(now, msg.sender, tableIdToTable[tableId].totalColorNumber))) %  tableIdToTable[tableId].totalColorNumber);
+        //uint32 random = 7;
         tableIdToTable[tableId].winnerNumber = random;
         
         emit GameIsEndedAtTable(tableId);
@@ -273,43 +276,46 @@ contract CryptoColors {
     
     function setColors(uint32 tableId, uint32 colorMultiplier, uint32 totalColors) internal gameInitialized tableExists(tableId) {
         GameTable storage table = tableIdToTable[tableId];
-    
-        uint32[] memory playerRemainingColors = new uint32[](maxNumOfPeopleAtTable);
         
+        //mapping (address => uint32) addressToRemainingColor;    // Cannot be declared as local
         for (uint32 j = 0; j < table.playerCount; j++) {
-            address playerAddrJ = table.players[j];
-            addressToPlayer[playerAddrJ].numberOfColors = colorMultiplier * addressToPlayer[playerAddrJ].betMultiplier;
-            addressToPlayer[playerAddrJ].colorId = j + 1;
-            playerRemainingColors[j] = addressToPlayer[playerAddrJ].numberOfColors;
+            addressToPlayer[table.players[j]].numberOfColors = colorMultiplier * addressToPlayer[table.players[j]].betMultiplier;
+            addressToPlayer[table.players[j]].colorId = j + 1;
+            addressToRemainingColor[table.players[j]] = addressToPlayer[table.players[j]].numberOfColors;
         }
         
-        uint32[] memory playersForRandomArray = new uint32[](maxNumOfPeopleAtTable);
-        
+        uint32[] memory selectableColorIds = new uint32[](maxNumOfPeopleAtTable);
+        address[] memory selectableColorIdPlayerAddr = new address[](maxNumOfPeopleAtTable);
+
         // Set colors randomly in grid
-        for (uint32 k = 0; k < totalColors; k++) {
-            uint32 p = 0;
+        for (uint32 colorIndex = 0; colorIndex < totalColors; colorIndex++) {
+            uint32 selectableColorIdsLengt = 0;
             for (uint32 n = 0; n < table.playerCount; n++) {
-                if (playerRemainingColors[n] > 0) {
-                    playersForRandomArray[p] = n; 
-                    p++;
+                if (addressToRemainingColor[table.players[n]] > 0) {
+                    selectableColorIds[selectableColorIdsLengt] = addressToPlayer[table.players[n]].colorId; 
+                    selectableColorIdPlayerAddr[selectableColorIdsLengt] = table.players[n]; 
+                    selectableColorIdsLengt++;
                 }                
             }
             
-            if (playersForRandomArray.length <= 1) {
-                for (uint32 m = k; m < totalColors; m++) {
-                    table.colorGrid[k] = addressToPlayer[table.players[playersForRandomArray[0]]].colorId;
-                    playersForRandomArray[playersForRandomArray[0]] --;
+            if (selectableColorIdsLengt <= 1) {
+                // remaining unassigned colors and last players remaining colors should be equal
+                require(totalColors - colorIndex == addressToRemainingColor[selectableColorIdPlayerAddr[0]]);
+                
+                for (uint32 m = colorIndex; m < totalColors; m++) {
+                    // We have only one selectable player and color
+                    table.colorGrid[m] = selectableColorIds[0];
+                    addressToRemainingColor[selectableColorIdPlayerAddr[0]] --;   
                 }
                 
                 break;
             } 
             
             else {
-                //uint32 random = uint32(uint(keccak256(abi.encodePacked(now, table.players[playersForRandomArray[0]], k))) % playersForRandomArray.length);
-                uint32 random = k;
-                //table.colorGrid[k] = addressToPlayer[table.players[playersForRandomArray[random]]].colorId;
-                table.colorGrid[k] = k;
-                playersForRandomArray[playersForRandomArray[random]] --;
+                uint32 random = uint32(uint(keccak256(abi.encodePacked(now, selectableColorIdPlayerAddr[0], colorIndex))) % selectableColorIdsLengt);
+                //uint32 random = 0;
+                table.colorGrid[colorIndex] = selectableColorIds[random];
+                addressToRemainingColor[selectableColorIdPlayerAddr[random]] --;
             }
         }
         
