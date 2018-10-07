@@ -5,7 +5,7 @@ pragma solidity ^0.4.25;
 // -- Table creation, automatic calculation of ID
 // -- emit vs return value. If blockchain is not changed, return val is blockchain
 // -- Same person, joining tables
-
+// -- Add caglar as contributor
 
 contract CryptoColors {
     
