@@ -3,9 +3,11 @@ pragma solidity ^0.4.25;
 //TODOs
 // -- Visibility (Public to Private etc)
 // -- Table creation, automatic calculation of ID
+// -- GetNextTableId => maxId + 1
 // -- emit vs return value. If blockchain is not changed, return val is blockchain
 // -- Same person, joining tables
-// -- Add caglar as contributor
+// -- Pick random index, instead of sequential
+// -- Check 2nd round
 
 contract CryptoColors {
     
@@ -25,8 +27,8 @@ contract CryptoColors {
     bool private gameAlreadyInitialized = false;
     
     
-    GameTable[] public tables; 
-    mapping (int => GameTable) public tableIdToTable;
+    uint32[] public tableKeys; 
+    mapping (uint32 => GameTable) public tableIdToTable;
     mapping (address => Player) public addressToPlayer;
     mapping (address => uint32) addressToRemainingColor;
         
@@ -121,7 +123,7 @@ contract CryptoColors {
             // if table is not initialized
             if (tableIdToTable[i].tableId == 0) {
                 tableIdToTable[i] = GameTable(i, 0, 0, 0, 0, tempColorGrid, tempPlayerAddresses);
-                tables.push(tableIdToTable[i]);
+                tableKeys.push(i);
             }
             
         }
@@ -160,7 +162,7 @@ contract CryptoColors {
         // if table is not initialized
         if (tableIdToTable[tableId].tableId == 0) {
             tableIdToTable[tableId] = GameTable(tableId, 0, 0, 0, 0, tempColorGrid, tempPlayerAddresses); 
-            tables.push(tableIdToTable[tableId]);
+            tableKeys.push(tableId);
         }
         
         emit TableHasAdded(owner, tableId);
@@ -168,7 +170,7 @@ contract CryptoColors {
     
     
     function getNextTableId() external view onlyOwner returns(uint256) {
-        return tables[tables.length-1].tableId + 1;
+        return tableKeys[tableKeys.length-1] + 1;
     }
     
     
@@ -177,12 +179,17 @@ contract CryptoColors {
         GameTable storage table = tableIdToTable[tableId];
         
         table.playerCount = 0;
+        
         table.firstPlayerArrivedTime = 0;
         table.winnerNumber = 0;
         table.totalColorNumber = 0;
         
-        for (uint32 j = 0; j < maxColorsAtTable; j++) {
-            table.colorGrid[j] = 0;           
+        for (uint32 i = 0; i < maxColorsAtTable; i++) {
+            table.colorGrid[i] = 0;           
+        }
+        
+        for (uint32 j = 0; j < maxNumOfPeopleAtTable; j++) {
+            table.players[j] = 0;           
         }
     }
     
@@ -287,6 +294,7 @@ contract CryptoColors {
         uint32[] memory selectableColorIds = new uint32[](maxNumOfPeopleAtTable);
         address[] memory selectableColorIdPlayerAddr = new address[](maxNumOfPeopleAtTable);
 
+
         // Set colors randomly in grid
         for (uint32 colorIndex = 0; colorIndex < totalColors; colorIndex++) {
             uint32 selectableColorIdsLengt = 0;
@@ -318,14 +326,14 @@ contract CryptoColors {
                 addressToRemainingColor[selectableColorIdPlayerAddr[random]] --;
             }
         }
-        
     }
     
     
     function findEmptyTable() internal view gameInitialized returns(uint32) {
-        for (uint i = 0; i < tables.length; i++) {
-            if (tables[i].playerCount < maxNumOfPeopleAtTable) {
-                return tables[i].tableId;
+        for (uint i = 0; i < tableKeys.length; i++) {
+            GameTable storage table = tableIdToTable[tableKeys[i]];
+            if (table.playerCount < maxNumOfPeopleAtTable) {
+                return table.tableId;
             }
         }
         return 0;
