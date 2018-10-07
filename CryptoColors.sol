@@ -11,6 +11,7 @@ pragma solidity ^0.4.25;
 // -- Pick random index, instead of sequential
 // -- Check 2nd round
 // -- Waiting times and not enough player case (consider middleware transations) and ethereum alarms
+// -- User should be able to withdraw
 // -- Bot needs to start the game
 // -- Check bets, get commission, pay the winner. 
 
