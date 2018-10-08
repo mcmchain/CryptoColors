@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>CryptoColors front-end</title>
+    <script language="javascript" type="text/javascript" src="libs\jquery-3.3.1.min"></script>
+    <script language="javascript" type="text/javascript" src="libs\eth-web3-1.0.0.min"></script>
+    <script language="javascript" type="text/javascript" src="libs\cryptocolors_abi.js"></script>
+  </head>
+  <body>
+
+    <script>
+      var cryptoColors;
+
+      function startApp() {
+        var cryptoColorsAddress = "CONTRACT_ADDRESS";
+        cryptoColors = new web3js.eth.Contract(cryptoColorABI, cryptoColorsAddress);
+      }
+
+
+      window.addEventListener('load', function() {
+        // Checking if Web3 has been injected by the browser (Mist/MetaMask)
+        if (typeof web3 !== 'undefined') {
+          // Use Mist/MetaMask's provider
+          web3js = new Web3(web3.currentProvider);
+        } else {
+          // Handle the case where the user doesn't have Metamask installed
+          // Show a message prompting them to install Metamask
+        }
+
+        // Now you can start your app & access web3 freely:
+        startApp()
+
+      })
+    </script>
+  </body>
+</html>
