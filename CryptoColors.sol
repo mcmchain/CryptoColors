@@ -1,21 +1,5 @@
 pragma solidity ^0.4.25;
 
-//TODOs
-// -- Visibility (Public to Private etc)
-// -- Table creation, automatic calculation of ID
-// -- GetNextTableId => maxId + 1
-// -- emit vs return value. If blockchain is not changed, return val is blockchain
-// -- Same person, joining tables (same and different tables)
-// -- At the same time joining tables
-// -- Randomizer improvments
-// -- Pick random index, instead of sequential
-// -- Check 2nd round
-// -- Waiting times and not enough player case (consider middleware transations) and ethereum alarms
-// -- User should be able to withdraw
-// -- Bot needs to start the game
-// -- Check bets, get commission, pay the winner. 
-
-
 contract CryptoColors {
     
     uint32 public minBetMultiplier;

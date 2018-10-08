@@ -1,0 +1,28 @@
+//TODOs
+
+V 1.0
+----------------
+**UI** 
+ --Init Playscreen 
+
+**Contract**
+ -- Visibility (Public to Private etc)
+ -- emit vs return value. If blockchain is not changed, return val is blockchain
+ -- Check 2nd round. Not playable now
+ -- Check bets, get commission, pay the winner. 
+
+V 1.1
+----------------
+**UI** 
+ --Init Admin panel
+
+**Contract**
+ -- Table creation, automatic calculation of ID if no ID is given by admin 
+ -- GetNextTableId => maxId + 1
+ -- Same person, joining tables (same and different tables)
+ -- At the same time joining tables
+ -- Randomizer improvments
+ -- Pick random index, instead of sequential
+ -- Waiting times and not enough player case (consider middleware transations) and ethereum alarms
+ -- User should be able to withdraw
+ -- Bot needs to start the game
