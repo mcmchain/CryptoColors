@@ -13,8 +13,9 @@
       var cryptoColors;
 
       function startApp() {
-        var cryptoColorsAddress = "CONTRACT_ADDRESS";
-        cryptoColors = new web3js.eth.Contract(cryptoColorABI, cryptoColorsAddress);
+	    // Address at Rinkeby TestNet
+        var cryptoColorsAddress = "0x9f1c5b2a1c167194ab80055a48295c6db9ed716e";   
+        cryptoColors = new web3js.eth.Contract(cryptoColorsABI, cryptoColorsAddress);
       }
 
 
@@ -24,6 +25,7 @@
           // Use Mist/MetaMask's provider
           web3js = new Web3(web3.currentProvider);
         } else {
+		  alert('Please install Metamask');
           // Handle the case where the user doesn't have Metamask installed
           // Show a message prompting them to install Metamask
         }
