@@ -17,12 +17,13 @@ V 1.1
  --Init Admin panel
 
 **Contract**
+ -- Split into different contracts
  -- Table creation, automatic calculation of ID if no ID is given by admin 
  -- GetNextTableId => maxId + 1
  -- Same person, joining tables (same and different tables)
  -- At the same time joining tables
  -- Randomizer improvments
  -- Pick random index, instead of sequential
- -- Waiting times and not enough player case (consider middleware transations) and ethereum alarms
+ -- Waiting times and not enough player case (consider middleware transations) and ethereum alarms.
  -- User should be able to withdraw
  -- Bot needs to start the game
