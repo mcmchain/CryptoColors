@@ -341,8 +341,11 @@ contract CryptoColors {
     }
     
     
-    function getPlayerInfo(address playerAddress) external view gameInitialized playerExists(playerAddress) returns(string, uint32)  {
-        return (addressToPlayer[playerAddress].name, addressToPlayer[playerAddress].betMultiplier);
+    function getPlayerInfo(address playerAddress) external view gameInitialized playerExists(playerAddress) 
+                                                    returns(address, string, uint32, uint32, uint32, uint32)  {
+                                                        
+        Player storage player = addressToPlayer[playerAddress];
+        return (player.playerAddress, player.name, player.colorId, player.tableId, player.betMultiplier, player.numberOfColors);
     }
     
     
@@ -350,58 +353,4 @@ contract CryptoColors {
         owner.transfer(address(this).balance);
     }
     
-        
-    /* 
-    //Not supported yet
-    // Return table pointer
-    function getTable(uint32 tableId) external view gameInitialized returns(bool, GameTable) {
-        GameTable storage table = tables[0];
-        bool found = false;
-        
-        for (uint32 i = 0; i < tables.length; i++) {
-            if (tables[i].tableId == tableId) {
-                found = true;
-                table = tables[i];
-                break;
-            }
-        }
-        
-        return (found, table);
-    }
-    */
-    
-    
-    // Just for test purposes. Set dummy values to the tables.
-    // Setting all variables costs 2.6M Gas
-    function setDummyValuesToTable(uint32 tableId) external gameInitialized tableExists(tableId) {
-        GameTable storage table = tableIdToTable[tableId];
-        
-        table.winnerNumber = tableId + maxNumOfPeopleAtTable;
-        table.players[tableId % maxNumOfPeopleAtTable] = owner;
-
-        /*
-        uint32[] memory tempColorGrid = new uint32[](maxColorsAtTable);
-        for (uint32 i = 0; i < maxColorsAtTable; i++) {
-            tempColorGrid[i] = i * tableId * 10;
-        }
-        table.colorGrid = tempColorGrid;
- 
-        
-        address[] memory tempPlayerAddresses = new address[](maxNumOfPeopleAtTable);
-        for (uint32 j = 0; j < maxNumOfPeopleAtTable; j++) {
-            tempPlayerAddresses[j] = owner;
-        }
-        table.players = tempPlayerAddresses;
-        */
-        
-        // Above code and below cost the same  2.6 M gas
-        
-        for (uint32 i = 0; i < maxColorsAtTable; i++) {
-            table.colorGrid[i] = i * tableId * 10;
-        }
- 
-        for (uint32 j = 0; j < maxNumOfPeopleAtTable; j++) {
-            table.players[j] = owner;
-        }
-    }
 }
